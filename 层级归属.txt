@@ -1,0 +1,41 @@
+【domain】
+|-service
+  |-api
+    |-UserDomainService
+  |-impl
+    |-UserDomainServiceImpl
+|-repository
+  |-api
+    |-UserRepository
+  |-impl
+    |-UserDBRepository
+|-dao
+  |-UserDAO
+|-entity
+  |-User
+|-vo
+  |-UserVO
+
+【application】
+|-service
+  |-api
+    |-UserAppService
+  |-impl
+    |-UserAppServiceImpl
+|-converter
+  |-UserDTOToEntityConverter
+  |-UserEntityToVOConverter
+|-dto
+  |-UserDTO
+
+【interface】
+|-controller
+  |-UIAPI
+|-converter
+  |-UserRequestToDTOConverter
+  |-UserVOToDTOConverter
+|-dto
+  |-UserRequest
+
+【基础层】
+  
