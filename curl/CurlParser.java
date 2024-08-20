@@ -15,7 +15,7 @@ public class CurlParser {
     private static CommandLineParser parser;
     private static Options options;
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         String cmd = "curl 'https://api.vc.bilibili.com/session_svr/v1/session_svr/single_unread?build=0&mobi_app=web&unread_type=0' \\\n" +
                 "  -H 'accept: application/json, text/plain, */*' \\\n" +
                 "  -H 'accept-language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6' \\\n" +
@@ -35,14 +35,14 @@ public class CurlParser {
         System.out.println(requestInfo);
     }
 
-    public static RequestInfo parse(String curlCmd) throws ParseException {
+    public static RequestInfo parse(String curlCmd) {
         String[] curlArgs = curlCmdToArgs(curlCmd);
         CommandLine commandLine = parseCurlArgs(curlArgs);
 
         String url = commandLine.getArgs()[0];
         Map<String, String> queryParamMap = getQueryParamMap(url);
         String method = commandLine.getOptionValue("X");
-        HttpMethod httpMethod = StringUtils.isBlank(method) ? HttpMethod.POST : HttpMethod.valueOf(method.toUpperCase());
+        HttpMethod httpMethod = StringUtils.isBlank(method) ? HttpMethod.GET : HttpMethod.valueOf(method.toUpperCase());
         Map<String, String> headerMap = getHeaderMap(commandLine);
         String body = commandLine.getOptionValue("d");
         return RequestInfo.builder()
@@ -77,7 +77,7 @@ public class CurlParser {
     }
 
 
-    private static CommandLine parseCurlArgs(String[] curlArgs) throws ParseException {
+    private static CommandLine parseCurlArgs(String[] curlArgs) {
         if (parser == null || options == null) {
             DefaultParser newParser = new DefaultParser();
             Options newOptions = new Options();
@@ -88,7 +88,11 @@ public class CurlParser {
             parser = newParser;
             options = newOptions;
         }
-        return parser.parse(options, curlArgs);
+        try {
+            return parser.parse(options, curlArgs);
+        } catch (ParseException e) {
+            throw new IllegalStateException("解析curl命令失败", e);
+        }
     }
 
 
