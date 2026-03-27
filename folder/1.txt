@@ -1,0 +1,63 @@
+
+基于Java的生态栈, 对于接口安全, 怎么进行考虑.
+我考虑的有以下几个方面
+
+接口要考虑的安全问题 {
+    入参
+        1.数组长度限制
+        2.非法入参检测(sql注入,xss脚本注入)
+    出参
+        是否有返回敏感信息, 需要脱敏返回(个人信息如手机号,邮箱编码,工号,姓名等)
+    权限
+        功能权限, 怎么正确维护好一个接口的权限矩阵
+        数据权限
+            跟主数据有关联的接口
+            跟主数据没关联的接口
+}
+
+我想做的统一的服务,在API前会调用
+param是接口的所有参数
+orderId是系统最核心的业务表的主键, 后续可能基于主业务表进行某些动作
+extra是一些特殊的配置用于定制化beforeAPICall内部的逻辑, 比如并不是所有接口都默认控制List长度为500
+beforeAPICall(Map<String, Object> param, Long orderId, Map<String, Object> extra) {
+    1.获取HttpRequest, 获取不到跳过
+    2.从HttpRequest中获取当前请求是否是执行过beforeAPICall的状态, 如果执行过, 跳过
+    3.遍历param对象做校验(有一个开关,强行打开所有检查(一般是某些环境才会开))
+    3.1 对每个String类型的字段做sql注入检查
+    3.2 对每个String类型的字段做xss脚本注入的检查
+    3.3 对每个List类型的字段做长度校验, 不能超过500
+    3.4 考虑提取param中的pageNum, pageSize字段做校验, 比如设置默认值, 校验pageNum * pageSize不能超过100等, 但每个API的pageNum和pageSize的字段名可能不一样, 有什么方法?
+    4.权限校验
+    5.限流控制
+    6.统一做拦截检测警告的场景
+    7.返回主表对象
+    8.执行完往HttpRequest中设置标志
+}
+
+extra { // 默认值都是往能不做就不做的方向设计
+    validate: [
+        sql: false,
+        xss: false,
+        listMaxSize: 500,
+        pageNumber: pageNum, // 能检查,但没法串改参数中的值
+        pageSize: pageSize, // 能检查,但没法串改参数中的值
+        pageMaxCount: 100
+    ],
+    permission: [
+        orderId: orderId
+    ],
+    rateLimit: [
+        businessName: "", // 实现的时候区分渠道角色还是CC4角色(内网,外网)
+        isRoleBased: ""
+    ]
+}
+
+
+afterAPICall(Map<String, Object> result, Long orderId, Map<String, Object> extra) {
+    1.遍历对象, 判断字段名是潜在的敏感字段, 是的话判断他的值是否有问题, 如果有问题, 把入参出参打印出来(长度太长切成几段Base64)
+    2.尝试篡改返回值,给敏感字段脱敏? (某些环境才会做吧, 一般环境用上面的警告模式发现后自行整改代码)
+}
+
+Java统一拦截注解 -> 公共鉴权服务 -> 调用beforeAPICall(调用时注意标注已经鉴权过了) -> 但这里拿不到body入参
+
+对我这个想法点评一下
