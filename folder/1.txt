@@ -39,8 +39,8 @@ extra { // 默认值都是往能不做就不做的方向设计
         sql: false,
         xss: false,
         listMaxSize: 500,
-        pageNumber: pageNum, // 能检查,但没法串改参数中的值
-        pageSize: pageSize, // 能检查,但没法串改参数中的值
+        pageNumber: "pageNum", // 能检查,但没法串改参数中的值
+        pageSize: "pageSize", // 能检查,但没法串改参数中的值
         pageMaxCount: 100
     ],
     permission: [
