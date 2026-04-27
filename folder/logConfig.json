@@ -5,7 +5,7 @@
       "logFile": "bilibili.log"
     }
   ],
-  "maxLogSizeMB": 1,
+  "maxLogSizeMB": 100,
   "retentionDays": 30,
   "maxRequestBodyKB": 500,
   "maxResponseBodyKB": 2000
