@@ -1,7 +1,9 @@
 import json
 import time
+import gzip
 import logging
 import os
+import shutil
 from logging.handlers import RotatingFileHandler
 
 from mitmproxy import http
@@ -20,6 +22,47 @@ MAX_RESPONSE_BODY_SIZE = CONFIG["maxResponseBodyKB"] * 1024
 LOGGER_MAP = {}
 
 
+# ========= 自定义 handler（核心） =========
+class GzipRotatingFileHandler(RotatingFileHandler):
+
+    def doRollover(self):
+        """
+        1. 关闭当前文件
+        2. 文件切分
+        3. 压缩旧文件
+        """
+
+        if self.stream:
+            self.stream.close()
+
+        # 1️⃣ 删除最老的
+        if self.backupCount > 0:
+            oldest = f"{self.baseFilename}.{self.backupCount}.gz"
+            if os.path.exists(oldest):
+                os.remove(oldest)
+
+        # 2️⃣ 往后移动 .gz 文件
+        for i in range(self.backupCount - 1, 0, -1):
+            src = f"{self.baseFilename}.{i}.gz"
+            dst = f"{self.baseFilename}.{i+1}.gz"
+
+            if os.path.exists(src):
+                os.rename(src, dst)
+
+        # 3️⃣ 压缩最新的 .1
+        if os.path.exists(self.baseFilename):
+            with open(self.baseFilename, "rb") as f_in:
+                with gzip.open(f"{self.baseFilename}.1.gz", "wb") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+
+            os.remove(self.baseFilename)
+
+        # 4️⃣ 重新打开日志文件
+        self.mode = "a"
+        self.stream = self._open()
+
+
+# ========= logger =========
 def get_logger(log_file):
     if log_file in LOGGER_MAP:
         return LOGGER_MAP[log_file]
@@ -27,10 +70,10 @@ def get_logger(log_file):
     logger = logging.getLogger(log_file)
     logger.setLevel(logging.INFO)
 
-    handler = RotatingFileHandler(
+    handler = GzipRotatingFileHandler(
         log_file,
         maxBytes=MAX_LOG_SIZE,
-        backupCount=20,
+        backupCount=50,
         encoding="utf-8"
     )
 
@@ -44,9 +87,7 @@ def get_logger(log_file):
 # ========= 匹配 =========
 def match_rule(req: http.Request, rule):
     prefix = rule["prefix"].lower()
-
     target = f"{req.host}{req.path}".lower()
-
     return target.startswith(prefix)
 
 
@@ -71,7 +112,7 @@ def safe_text(message):
 
 # ========= 生命周期 =========
 def request(flow: http.HTTPFlow):
-    flow.metadata["start_time"] = time.time()
+    flow.metadata["start"] = time.time()
 
 
 def response(flow: http.HTTPFlow):
@@ -91,7 +132,7 @@ def response(flow: http.HTTPFlow):
 
         logger = get_logger(rule["logFile"])
 
-        duration = int((time.time() - flow.metadata.get("start_time", time.time())) * 1000)
+        duration = int((time.time() - flow.metadata.get("start", time.time())) * 1000)
 
         log = {
             "method": req.method,
