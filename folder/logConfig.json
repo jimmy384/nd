@@ -1,0 +1,12 @@
+{
+  "rules": [
+    {
+      "prefix": "api.bilibili.com",
+      "logFile": "bilibili.log"
+    }
+  ],
+  "maxLogSizeMB": 1,
+  "retentionDays": 30,
+  "maxRequestBodyKB": 500,
+  "maxResponseBodyKB": 2000
+}
